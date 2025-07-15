@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # PostgreSQL para a parte 1 (Node.js)
+  postgres-parte1:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: processos_tjrj
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_parte1_data:/var/lib/postgresql/data
+    networks:
+      - desafio-elaw
+
+  # PostgreSQL para a parte 2 (C#)
+  postgres-parte2:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: processos_worker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_parte2_data:/var/lib/postgresql/data
+    networks:
+      - desafio-elaw
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - desafio-elaw
+
+  # Aplicação Node.js (Parte 1)
+  parte1-node:
+    build:
+      context: ./parte1-node
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres-parte1
+      - rabbitmq
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres-parte1:5432/processos_tjrj
+      RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+    networks:
+      - desafio-elaw
+
+  # Aplicação C# (Parte 2)
+  parte2-csharp:
+    build:
+      context: ./parte2-csharp
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres-parte2
+      - rabbitmq
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres-parte2:5432/processos_worker
+      RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+    networks:
+      - desafio-elaw
+
+volumes:
+  postgres_parte1_data:
+  postgres_parte2_data:
+  rabbitmq_data:
+
+networks:
+  desafio-elaw:
+    driver: bridge 
