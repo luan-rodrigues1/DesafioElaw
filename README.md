@@ -2,7 +2,7 @@
 
 Este projeto implementa um sistema completo de coleta de processos do TJRJ com duas aplicações: uma em Node.js/TypeScript para coleta e outra em C# para processamento.
 
-## Arquitetura
+## 🏗️ Arquitetura
 
 O sistema é composto por:
 
@@ -12,78 +12,192 @@ O sistema é composto por:
 - **RabbitMQ**: Sistema de mensageria entre as aplicações
 - **Docker**: Orquestração completa com docker-compose
 
-## Estrutura do Projeto
+## 📋 Pré-requisitos
 
-```
-DesafioElaw/
-├── docker-compose.yml          # Orquestração Docker
-├── parte1-node/                # Aplicação Node.js/TypeScript
-│   ├── src/
-│   │   ├── index.ts           # Arquivo principal
-│   │   ├── types/
-│   │   │   └── Processo.ts    # Interfaces
-│   │   └── services/
-│   │       ├── TJRJScraper.ts # Web scraping
-│   │       ├── DatabaseService.ts # PostgreSQL
-│   │       └── RabbitMQService.ts # RabbitMQ
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── Dockerfile
-│   └── README.md
-├── parte2-csharp/              # Aplicação C# (a ser implementada)
-│   ├── Worker.cs
-│   ├── Processo.cs
-│   ├── Program.cs
-│   ├── parte2-csharp.csproj
-│   └── Dockerfile
-└── README.md
+- **Docker** instalado e funcionando
+- **Docker Compose** instalado e funcionando
+- Conexão com internet (para coleta de dados do TJRJ)
+
+## 🚀 Como Executar
+
+### **1. Executar tudo de uma vez (Recomendado)**
+
+```bash
+docker-compose up
 ```
 
-## Serviços Docker
+Este comando vai:
 
-- **postgres-parte1**: Banco para a aplicação Node.js (porta 5432)
-- **postgres-parte2**: Banco para a aplicação C# (porta 5433)
-- **rabbitmq**: Sistema de mensageria (porta 5672, admin 15672)
-- **parte1-node**: Aplicação de coleta
-- **parte2-csharp**: Worker de processamento
+- Subir todos os serviços (PostgreSQL, RabbitMQ, Parte 1 e Parte 2)
+- Executar automaticamente a coleta de dados (Parte 1)
+- Iniciar o worker C# para processar as mensagens (Parte 2)
 
-## Execução
-
-### Pré-requisitos
-
-- Docker e Docker Compose instalados
-
-### Executar tudo
+### **2. Executar em background**
 
 ```bash
 docker-compose up -d
 ```
 
-### Executar apenas infraestrutura
+### **3. Ver logs em tempo real**
 
 ```bash
-docker-compose up -d postgres-parte1 postgres-parte2 rabbitmq
+docker-compose up --follow
 ```
 
-### Executar apenas Parte 1
+### **4. Ver logs de serviços específicos**
 
 ```bash
-docker-compose up parte1-node
+# Logs da Parte 1 (Node.js)
+docker-compose logs parte1-node
+
+# Logs da Parte 2 (C#)
+docker-compose logs parte2-csharp
+
+# Logs do RabbitMQ
+docker-compose logs rabbitmq
 ```
 
-### Executar apenas Parte 2
+## 🔍 Verificar Resultados
+
+### **Verificar dados salvos nos bancos:**
 
 ```bash
-docker-compose up parte2-csharp
+# Verificar dados na Parte 1 (Node.js)
+docker-compose exec postgres-parte1 psql -U postgres -d processos_tjrj -c "SELECT COUNT(*) FROM processos;"
+
+# Verificar dados na Parte 2 (C#)
+docker-compose exec postgres-parte2 psql -U postgres -d processos_worker -c "SELECT COUNT(*) FROM processos_worker;"
 ```
 
-## Acessos
+### **Ver detalhes dos processos:**
 
-- **RabbitMQ Management**: http://localhost:15672 (admin/admin)
+```bash
+# Ver processos da Parte 1
+docker-compose exec postgres-parte1 psql -U postgres -d processos_tjrj -c "SELECT numero_processo, nome_parte, criado_em FROM processos LIMIT 5;"
+
+# Ver processos da Parte 2
+docker-compose exec postgres-parte2 psql -U postgres -d processos_worker -c "SELECT numero_processo, nome_parte, criado_em FROM processos_worker LIMIT 5;"
+```
+
+## 🌐 Acessos
+
+- **RabbitMQ Management**: http://localhost:15672
+  - Usuário: `admin`
+  - Senha: `admin`
 - **PostgreSQL Parte 1**: localhost:5432
+  - Database: `processos_tjrj`
+  - Usuário: `postgres`
+  - Senha: `postgres`
 - **PostgreSQL Parte 2**: localhost:5433
+  - Database: `processos_worker`
+  - Usuário: `postgres`
+  - Senha: `postgres`
 
-## Funcionalidades
+## 📊 O que acontece durante a execução
+
+1. **Inicialização dos serviços**:
+
+   - PostgreSQL parte 1 e parte 2 iniciam
+   - RabbitMQ inicia
+   - Health checks garantem que os serviços estejam prontos
+
+2. **Parte 1 (Node.js) executa automaticamente**:
+
+   - Coleta 10 processos do TJRJ
+   - Salva no banco `processos_tjrj`
+   - Envia mensagens para a fila RabbitMQ `new_processes`
+   - Para após concluir (graças ao `docker-compose.override.yml`)
+
+3. **Parte 2 (C#) processa as mensagens**:
+   - Consome mensagens da fila RabbitMQ
+   - Salva os dados no banco `processos_worker`
+   - Fica aguardando novas mensagens
+
+## 🛑 Comandos de Controle
+
+### **Parar todos os serviços:**
+
+```bash
+docker-compose down
+```
+
+### **Parar e remover volumes (dados):**
+
+```bash
+docker-compose down -v
+```
+
+### **Reconstruir containers:**
+
+```bash
+docker-compose down
+docker-compose build --no-cache
+docker-compose up
+```
+
+## 📁 Estrutura do Projeto
+
+```
+DesafioElaw/
+├── docker-compose.yml          # Orquestração Docker
+├── docker-compose.override.yml # Configurações específicas
+├── parte1-node/                # Aplicação Node.js/TypeScript
+│   ├── src/
+│   │   ├── index.ts           # Arquivo principal
+│   │   ├── types/
+│   │   │   └── Process.ts     # Interfaces
+│   │   └── services/
+│   │       ├── TJRJApiService.ts # Web scraping
+│   │       ├── DatabaseService.ts # PostgreSQL
+│   │       └── RabbitMQService.ts # RabbitMQ
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── Dockerfile
+│   └── env.example
+├── parte2-csharp/              # Aplicação C#
+│   ├── Worker.cs
+│   ├── Processo.cs
+│   ├── Program.cs
+│   ├── parte2-csharp.csproj
+│   ├── appsettings.json
+│   └── Dockerfile
+└── README.md
+```
+
+## 🔧 Serviços Docker
+
+- **postgres-parte1**: Banco para a aplicação Node.js (porta 5432)
+- **postgres-parte2**: Banco para a aplicação C# (porta 5433)
+- **rabbitmq**: Sistema de mensageria (porta 5672, admin 15672)
+- **parte1-node**: Aplicação de coleta (executa automaticamente)
+- **parte2-csharp**: Worker de processamento (aguarda mensagens)
+
+## ⚠️ Observações Importantes
+
+### **Variáveis de Ambiente**
+
+- No Docker, as variáveis são injetadas pelo `docker-compose.yml`
+- Não é necessário arquivo `.env` para execução Docker
+- Para desenvolvimento local, copie `env.example` para `.env`
+
+### **Portas Utilizadas**
+
+- **5432**: PostgreSQL Parte 1
+- **5433**: PostgreSQL Parte 2
+- **5672**: RabbitMQ
+- **15672**: RabbitMQ Management
+
+### **Persistência de Dados**
+
+- Os dados são persistidos em volumes Docker
+- Para limpar dados: `docker-compose down -v`
+
+### **Logs e Debugging**
+
+- Use `docker-compose logs -f` para ver logs em tempo real
+- Cada serviço tem logs específicos para facilitar debugging
+
+## 🎯 Funcionalidades
 
 ### Parte 1 - Coleta (Node.js/TypeScript)
 
@@ -95,59 +209,42 @@ docker-compose up parte2-csharp
   - Nome da Parte: Eduardo
 - Coleta dos primeiros 10 processos
 - Persistência em PostgreSQL
-- Envio para fila RabbitMQ "novos_processos"
+- Envio para fila RabbitMQ "new_processes"
 
 ### Parte 2 - Processamento (C#)
 
 - Worker que consome mensagens da fila
 - Persistência em banco PostgreSQL separado
 - Processamento assíncrono
+- Retry automático em caso de falhas
 
-## Estrutura da Mensagem
+## 📈 Resultado Esperado
 
-```json
-{
-  "Id": "uuid",
-  "NumeroProcesso": "string",
-  "Origem": "string",
-  "Comarca_Regional": "string",
-  "Competencia": "string",
-  "NomeParte": "string",
-  "CriadoEm": "datetime"
-}
-```
+Após executar `docker-compose up`, você deve ver:
 
-## Desenvolvimento
+- **10 processos** salvos no banco `processos_tjrj` (Parte 1)
+- **10 processos** processados e salvos no banco `processos_worker` (Parte 2)
+- Logs confirmando o sucesso da operação
 
-### Parte 1 (Node.js)
+## 🚨 Troubleshooting
+
+### **Erro de conexão com banco**
 
 ```bash
-cd parte1-node
-npm install
-npm run dev
+docker-compose down
+docker-compose up
 ```
 
-### Parte 2 (C#)
+### **Erro de conexão com RabbitMQ**
 
-```bash
-cd parte2-csharp
-dotnet run
-```
+- Aguarde alguns segundos para o RabbitMQ inicializar
+- Verifique logs: `docker-compose logs rabbitmq`
 
-## Logs
+### **Dados não aparecem**
 
-Cada aplicação gera logs detalhados:
+- Verifique se a Parte 1 executou: `docker-compose logs parte1-node`
+- Verifique se a Parte 2 processou: `docker-compose logs parte2-csharp`
 
-- Inicialização de serviços
-- Coleta de dados
-- Persistência
-- Comunicação RabbitMQ
-- Tratamento de erros
+---
 
-## Próximos Passos
-
-1. Implementar a Parte 2 em C#
-2. Adicionar testes automatizados
-3. Implementar monitoramento
-4. Adicionar retry policies
-5. Implementar health checks
+**🎉 O sistema demonstra comunicação assíncrona entre aplicações via RabbitMQ com persistência em bancos separados!**

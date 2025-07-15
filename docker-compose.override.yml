@@ -1,0 +1,6 @@
+version: '3.8'
+
+services:
+  parte1-node:
+    restart: "no"
+    command: ["npm", "start"] 

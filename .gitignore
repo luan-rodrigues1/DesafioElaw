@@ -20,7 +20,21 @@ yarn-error.log*
 **/postgres_parte2_data/
 **/rabbitmq_data/
 
+# C# / .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.tmp
+*.pdb
+*.dll
+*.exe
+
 # Outros
 .DS_Store
 .idea/
-*.swp 
+*.swp
+*.swo
+*~
+Thumbs.db 

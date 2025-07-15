@@ -14,6 +14,11 @@ services:
       - postgres_parte1_data:/var/lib/postgresql/data
     networks:
       - desafio-elaw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # PostgreSQL para a parte 2 (C#)
   postgres-parte2:
@@ -28,6 +33,11 @@ services:
       - postgres_parte2_data:/var/lib/postgresql/data
     networks:
       - desafio-elaw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # RabbitMQ
   rabbitmq:
@@ -42,31 +52,41 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - desafio-elaw
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Aplicação Node.js (Parte 1)
+  # Aplicação Node.js
   parte1-node:
     build:
       context: ./parte1-node
       dockerfile: Dockerfile
     depends_on:
-      - postgres-parte1
-      - rabbitmq
+      postgres-parte1:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres-parte1:5432/processos_tjrj
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
     networks:
       - desafio-elaw
+    restart: "on-failure"
 
-  # Aplicação C# (Parte 2)
+  # Aplicação C#
   parte2-csharp:
     build:
       context: ./parte2-csharp
       dockerfile: Dockerfile
     depends_on:
-      - postgres-parte2
-      - rabbitmq
+      postgres-parte2:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres-parte2:5432/processos_worker
+      DATABASE_URL: Host=postgres-parte2;Port=5432;Database=processos_worker;Username=postgres;Password=postgres
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
     networks:
       - desafio-elaw
