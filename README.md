@@ -71,16 +71,6 @@ docker-compose exec postgres-parte1 psql -U postgres -d processos_tjrj -c "SELEC
 docker-compose exec postgres-parte2 psql -U postgres -d processos_worker -c "SELECT COUNT(*) FROM processos_worker;"
 ```
 
-### **Ver detalhes dos processos:**
-
-```bash
-# Ver processos da Parte 1
-docker-compose exec postgres-parte1 psql -U postgres -d processos_tjrj -c "SELECT numero_processo, nome_parte, criado_em FROM processos LIMIT 5;"
-
-# Ver processos da Parte 2
-docker-compose exec postgres-parte2 psql -U postgres -d processos_worker -c "SELECT numero_processo, nome_parte, criado_em FROM processos_worker LIMIT 5;"
-```
-
 ## Acessos
 
 - **RabbitMQ Management**: http://localhost:15672
