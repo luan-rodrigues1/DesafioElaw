@@ -1,5 +1,8 @@
 # Desafio Elaw - Sistema de Coleta e Processamento de Processos TJRJ
 
+[➡️ Ir para Instruções](#-como-executar)  
+[➡️ Ir para Decisões Técnicas](#decisões-técnicas)
+
 Este projeto implementa um sistema completo de coleta de processos do TJRJ com duas aplicações: uma em Node.js/TypeScript para coleta e outra em C# para processamento.
 
 ## 🏗️ Arquitetura
@@ -248,3 +251,20 @@ docker-compose up
 ---
 
 **🎉 O sistema demonstra comunicação assíncrona entre aplicações via RabbitMQ com persistência em bancos separados!**
+
+---
+
+## Decisões Técnicas
+
+### 1ª Parte - Feita com Node.js e TypeScript
+
+Optei por desenvolver a primeira parte utilizando Node.js com TypeScript, linguagem com a qual tenho mais familiaridade. Analisei que essa etapa poderia demandar mais esforço técnico, então decidi executá-la com uma stack que domino bem. Inicialmente, tentei realizar o processo via web scraping utilizando a biblioteca Puppeteer, o que funcionou parcialmente, mas percebi que o site do Tribunal de Justiça implementa algumas medidas para mitigar esse tipo de acesso. Ao inspecionar o network do site, notei que era possível realizar requisições diretas à API utilizada pelo front-end.
+Essa abordagem simplificou bastante o código, mas me deparei com um problema: em determinados horários, a API exige um token de verificação. Para lidar com isso de forma prática e manter o fluxo funcional, implementei uma verificação que, ao detectar essa exigência, utiliza um mock com dados reais previamente coletados. O sistema também registra em logs quando essa alternativa foi acionada. Reconheço que essa é uma solução improvisada, com mais tempo, estudaria uma forma mais robusta de contornar o uso do token, evitando o uso de mocks.
+
+### 2ª Parte - Feita com C#
+
+A segunda etapa, que consistia em consumir os dados armazenados via fila RabbitMQ, me pareceu mais simples tecnicamente. Tenho conhecimentos básicos de C# e, embora nunca tenha utilizado RabbitMQ antes, já trabalhei com mensageria no Google Cloud Platform usando Pub/Sub. A estrutura que adotei seguiu um padrão semelhante ao da primeira parte, com arquivos de serviço separados para lidar com a conexão ao RabbitMQ e ao banco de dados, em ambas as parte utilizei o banco postgreSQL escolhi por ser um banco que estou acostumado de usar em projetos e por já ter utilizado ele com o docker antes
+
+### 3ª Parte - Orquestração com Docker
+
+Tenho alguma experiência com Docker, principalmente em ajustes de arquivos existentes, como DockerFile e docker-compose, e no uso em pipelines de CI/CD com GitHub Actions. Neste desafio, me propus a montar do zero a orquestração dos serviços. O maior desafio foi garantir a ordem correta de inicialização dos containers, especialmente a conexão com o RabbitMQ e os bancos de dados. Para isso, implementei uma lógica de tentativas com retentativas em loop, o que resolveu o problema de forma funcional. Ainda assim, considero esse ponto como uma oportunidade de melhoria, buscando formas mais elegantes e resilientes de garantir a orquestração sem soluções improvisadas.

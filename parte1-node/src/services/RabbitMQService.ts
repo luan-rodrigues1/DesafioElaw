@@ -7,12 +7,32 @@ export class RabbitMQService {
   private channel: amqp.Channel | null = null;
 
   async init(): Promise<void> {
-    this.connection = await amqp.connect(process.env.RABBITMQ_URL || "");
-    if (!this.connection) throw new Error('Failed to connect to RabbitMQ');
-    this.channel = await this.connection.createChannel();
-    if (!this.channel) throw new Error('Failed to create RabbitMQ channel');
-    await this.channel.assertQueue(this.queueName, { durable: true });
-    console.info('Conexão com RabbitMQ estabelecida');
+    const maxRetries = 5;
+    const retryDelayMs = 2000;
+    let attempt = 0;
+    let lastError: any = null;
+    while (attempt < maxRetries) {
+      try {
+        this.connection = await amqp.connect(process.env.RABBITMQ_URL || "");
+        if (!this.connection) throw new Error('Failed to connect to RabbitMQ');
+        this.channel = await this.connection.createChannel();
+        if (!this.channel) throw new Error('Failed to create RabbitMQ channel');
+        await this.channel.assertQueue(this.queueName, { durable: true });
+        console.info('Conexão com RabbitMQ estabelecida');
+        return;
+      } catch (error) {
+        attempt++;
+        lastError = error;
+        const errMsg = (error as any)?.message || error;
+        console.warn(`Tentativa ${attempt} de ${maxRetries} falhou ao conectar com RabbitMQ:`, errMsg);
+        if (attempt < maxRetries) {
+          await new Promise(res => setTimeout(res, retryDelayMs));
+        }
+      }
+    }
+    const lastErrMsg = (lastError as any)?.message || lastError;
+    console.error('Erro ao conectar com RabbitMQ após várias tentativas:', lastErrMsg);
+    throw lastError;
   }
 
   async sendProcesso(processo: Processo): Promise<void> {
